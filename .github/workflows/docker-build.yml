@@ -4,9 +4,13 @@ on:
   push:
     branches:
       - main
+      - dev
+      - staging
   pull_request:
     branches:
       - main
+      - dev
+      - staging
 
 jobs:
   build:
@@ -35,3 +39,5 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/ml-digit-recognition:latest
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/ml-digit-recognition:latest
+          cache-to: type=inline
