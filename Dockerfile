@@ -1,10 +1,10 @@
-# 使用官方 Python 镜像
+# 使用官方 Python 3.12 镜像
 FROM python:3.12-slim
 
 # 设置工作目录
 WORKDIR /app
 
-# 安装系统依赖（兼容 Python 3.12-slim 和 OpenCV）
+# 安装系统依赖（matplotlib、测试脚本需要）
 RUN apt-get update && apt-get install -y \
     git \
     wget \
@@ -19,9 +19,9 @@ RUN apt-get update && apt-get install -y \
 # 复制项目文件
 COPY . /app
 
-# 升级 pip 并安装 Python 依赖
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+# 安装 Python 依赖
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
 
-# 设置默认命令
-CMD ["python", "app.py"]
+# 设置默认命令（可以运行测试或训练）
+CMD ["python", "train_fixed.py"]
