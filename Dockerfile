@@ -17,11 +17,13 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制项目文件
-COPY . /app
+COPY app /app/app
+COPY dataset /app/dataset
+COPY requirements.txt /app/requirements.txt
 
 # 安装 Python 依赖
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 设置默认命令（可以运行测试或训练）
-CMD ["python", "train_fixed.py"]
+CMD ["python", "app/app.py"]
