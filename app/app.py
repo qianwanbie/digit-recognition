@@ -1,4 +1,3 @@
-# train_fixed.py
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -193,7 +192,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, e
     
     return history, save_dir
 
-# 4. 评估函数（修复JSON序列化问题）
+# 4. 评估函数（新增归一化混淆矩阵与F1曲线）
 def evaluate_model(model, test_loader, device, save_dir):
     model.eval()
     all_predictions = []
@@ -206,8 +205,8 @@ def evaluate_model(model, test_loader, device, save_dir):
             output = model(data)
             _, predicted = torch.max(output.data, 1)
             
-            all_predictions.extend(predicted.cpu().numpy().tolist())  # 转换为Python列表
-            all_targets.extend(target.cpu().numpy().tolist())  # 转换为Python列表
+            all_predictions.extend(predicted.cpu().numpy().tolist())
+            all_targets.extend(target.cpu().numpy().tolist())
     
     # 计算指标
     accuracy = accuracy_score(all_targets, all_predictions) * 100
@@ -216,16 +215,15 @@ def evaluate_model(model, test_loader, device, save_dir):
     
     print(f"Test accuracy: {accuracy:.2f}%")
     print("\nClassification Report:")
-    # 打印格式化的分类报告
     print(classification_report(all_targets, all_predictions, digits=4))
     
-    # 保存评估结果（修复序列化问题）
+    # 保存评估结果
     eval_results = {
         'test_accuracy': float(accuracy),
         'classification_report': class_report,
         'confusion_matrix': conf_matrix.tolist(),
-        'predictions': all_predictions,  # 已经是Python列表
-        'targets': all_targets,  # 已经是Python列表
+        'predictions': all_predictions,
+        'targets': all_targets,
         'evaluation_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     
@@ -233,7 +231,7 @@ def evaluate_model(model, test_loader, device, save_dir):
     with open(eval_path, 'w', encoding='utf-8') as f:
         json.dump(eval_results, f, ensure_ascii=False, indent=2)
     
-    # 保存混淆矩阵（使用英文标签避免字体问题）
+    # 普通混淆矩阵
     plt.figure(figsize=(10, 8))
     plt.imshow(conf_matrix, interpolation='nearest', cmap=plt.cm.Blues)
     plt.title('Confusion Matrix')
@@ -241,29 +239,61 @@ def evaluate_model(model, test_loader, device, save_dir):
     tick_marks = np.arange(10)
     plt.xticks(tick_marks, range(10))
     plt.yticks(tick_marks, range(10))
-    
     thresh = conf_matrix.max() / 2.
     for i in range(conf_matrix.shape[0]):
         for j in range(conf_matrix.shape[1]):
             plt.text(j, i, format(conf_matrix[i, j], 'd'),
-                    horizontalalignment="center",
-                    color="white" if conf_matrix[i, j] > thresh else "black")
-    
+                     horizontalalignment="center",
+                     color="white" if conf_matrix[i, j] > thresh else "black")
     plt.ylabel('True Label')
     plt.xlabel('Predicted Label')
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, 'confusion_matrix.png'), dpi=300, bbox_inches='tight')
     plt.close()
-    
+
+    # === 新增：绘制归一化混淆矩阵 ===
+    conf_matrix_norm = conf_matrix.astype('float') / conf_matrix.sum(axis=1)[:, np.newaxis]
+    plt.figure(figsize=(10, 8))
+    plt.imshow(conf_matrix_norm, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.title('Normalized Confusion Matrix')
+    plt.colorbar()
+    tick_marks = np.arange(len(conf_matrix))
+    plt.xticks(tick_marks, range(len(conf_matrix)))
+    plt.yticks(tick_marks, range(len(conf_matrix)))
+
+    thresh = conf_matrix_norm.max() / 2.
+    for i in range(conf_matrix_norm.shape[0]):
+        for j in range(conf_matrix_norm.shape[1]):
+            plt.text(j, i, f"{conf_matrix_norm[i, j]:.2f}",
+                     ha="center",
+                     color="white" if conf_matrix_norm[i, j] > thresh else "black")
+
+    plt.ylabel('True Label')
+    plt.xlabel('Predicted Label')
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, 'confusion_matrix_normalized.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+    # === 新增：绘制每类 F1 曲线 ===
+    f1_scores = [v["f1-score"] for k, v in class_report.items() if k.isdigit()]
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(len(f1_scores)), f1_scores, marker='o', linestyle='-', linewidth=2)
+    plt.title("Per-Class F1 Score Curve")
+    plt.xlabel("Class Label")
+    plt.ylabel("F1 Score")
+    plt.xticks(range(len(f1_scores)), range(len(f1_scores)))
+    plt.grid(True, alpha=0.3)
+    plt.ylim(0, 1)
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, 'f1_score_curve.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
     print(f"Evaluation results saved: {eval_path}")
-    
     return accuracy, class_report, conf_matrix
 
-# 5. 可视化训练历史（使用英文标签）
+# 5. 可视化训练历史
 def plot_training_history(history, save_dir, epochs):
     plt.figure(figsize=(15, 5))
-    
-    # 损失曲线
     plt.subplot(1, 2, 1)
     plt.plot(range(1, epochs+1), history['train_loss'], label='Train Loss', linewidth=2)
     plt.plot(range(1, epochs+1), history['val_loss'], label='Val Loss', linewidth=2)
@@ -272,8 +302,6 @@ def plot_training_history(history, save_dir, epochs):
     plt.ylabel('Loss')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    
-    # 准确率曲线
     plt.subplot(1, 2, 2)
     plt.plot(range(1, epochs+1), history['train_acc'], label='Train Accuracy', linewidth=2)
     plt.plot(range(1, epochs+1), history['val_acc'], label='Val Accuracy', linewidth=2)
@@ -282,7 +310,6 @@ def plot_training_history(history, save_dir, epochs):
     plt.ylabel('Accuracy (%)')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, 'training_history.png'), dpi=300, bbox_inches='tight')
     plt.close()
@@ -293,7 +320,6 @@ def main():
     print(f"Using device: {device}")
     
     data_path = "./dataset"
-    
     if not os.path.exists(data_path):
         print(f"Error: Dataset path does not exist: {data_path}")
         return
@@ -313,7 +339,7 @@ def main():
     val_dataset = HandwrittenDigitsDataset(data_path, 'val')
     test_dataset = HandwrittenDigitsDataset(data_path, 'test')
     
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=0)  # 设置为0避免多进程问题
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=0)
     val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False, num_workers=0)
     test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=0)
     
@@ -330,13 +356,9 @@ def main():
     print(f"Batch size: 64")
     print(f"Learning rate: 0.001")
     
-    history, save_dir = train_model(
-        model, train_loader, val_loader, criterion, optimizer, device, epochs=epochs
-    )
-    
+    history, save_dir = train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs=epochs)
     plot_training_history(history, save_dir, epochs)
     
-    # 加载最佳模型（修复weights_only警告）
     best_model_path = os.path.join(save_dir, 'final_model.pth')
     checkpoint = torch.load(best_model_path, map_location=device, weights_only=False)
     model.load_state_dict(checkpoint['model_state_dict'])
