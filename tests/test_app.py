@@ -3,7 +3,14 @@ import os
 import torch
 import numpy as np
 import pytest
-from app import HandwrittenDigitsDataset, DigitRecognizer, train_model, evaluate_model
+import sys
+import logging
+
+# 配置 logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # 把 final-project 加入路径
+from app.app import HandwrittenDigitsDataset, DigitRecognizer, train_model, evaluate_model
 
 # ==== 1. 测试数据集类 ====
 def test_dataset_loading(tmp_path):
@@ -25,8 +32,12 @@ def test_dataset_loading(tmp_path):
         json.dump(labels_json, f, ensure_ascii=False, indent=2)
 
     dataset = HandwrittenDigitsDataset(str(tmp_path / "dataset"), split="train")
-    assert len(dataset) == 5
+    logging.info("Dataset length: %d", len(dataset))
     sample_x, sample_y = dataset[0]
+    logging.info("Sample X shape: %s", sample_x.shape)
+    logging.info("Sample Y: %d", sample_y.item())
+
+    assert len(dataset) == 5
     assert sample_x.shape == (1, 28, 28)
     assert isinstance(sample_y.item(), int)
 
@@ -36,6 +47,7 @@ def test_model_forward():
     model = DigitRecognizer()
     dummy_input = torch.randn(4, 1, 28, 28)
     output = model(dummy_input)
+    logging.info("Model output shape: %s", output.shape)
     assert output.shape == (4, 10), "Output shape should be (batch_size, num_classes)"
 
 # ==== 3. 测试训练函数（快速运行 1 epoch） ====
@@ -51,6 +63,9 @@ def test_train_model(tmp_path):
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     history, save_dir = train_model(model, loader, loader, criterion, optimizer, "cpu", epochs=1)
+    logging.info("Training history keys: %s", list(history.keys()))
+    logging.info("Training save_dir: %s", save_dir)
+
     assert os.path.exists(save_dir)
     assert "train_loss" in history
     assert len(history["train_loss"]) == 1
@@ -68,6 +83,11 @@ def test_evaluate_model(tmp_path):
     os.makedirs(save_dir, exist_ok=True)
 
     acc, report, cm = evaluate_model(model, loader, "cpu", str(save_dir))
+    logging.info("Evaluation accuracy: %.4f", acc)
+    logging.info("Evaluation report: %s", report)
+    logging.info("Confusion matrix shape: %s", cm.shape)
+    logging.info("Results saved in: %s", save_dir)
+
     assert isinstance(acc, float)
     assert os.path.exists(save_dir / "evaluation_results.json")
     assert os.path.exists(save_dir / "confusion_matrix.png")
