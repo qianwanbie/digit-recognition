@@ -1,0 +1,83 @@
+# Python 基础缓存和编译文件
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+pip-wheel-metadata/
+*.manifest
+*.spec
+
+# 虚拟环境文件夹
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+
+# Jupyter Notebook 缓存
+.ipynb_checkpoints/
+
+# 数据集与模型文件
+dataset/
+training_results/
+*.pt
+*.pth
+*.ckpt
+*.npz
+*.npy
+*.csv
+*.json
+
+# 保留数据集示例（可选）
+!dataset/README.md
+!dataset/example_*.npy
+
+# 日志与输出
+*.log
+logs/
+runs/
+output/
+tmp/
+temp/
+
+# Docker 相关
+docker-compose.override.yml
+**/.docker/
+**/docker-data/
+*.pid
+*.tar
+*.bak
+
+# VS Code 配置
+.vscode/
+.history/
+.settings/
+
+# 系统与IDE文件
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# 环境变量文件
+.env
+.env.*
+!.env.example
+
+# 测试与覆盖率文件
+.pytest_cache/
+.coverage
+htmlcov/
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
