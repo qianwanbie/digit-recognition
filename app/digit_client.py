@@ -5,8 +5,11 @@ from PIL import Image, ImageOps, ImageDraw
 import tkinter as tk
 from tkinter import messagebox
 import os
+import subprocess
+import sys
+import time
 
-# ======== 模型定义（与训练时完全一致） ========
+# ======== 模型定义（必须与 app.py 保持一致） ========
 class DigitRecognizer(nn.Module):
     def __init__(self):
         super(DigitRecognizer, self).__init__()
@@ -40,13 +43,9 @@ def load_model(model_path, device):
 
 # ======== 图像预处理 ========
 def preprocess_image(image):
-    # 转灰度
     image = image.convert('L')
-    # 反相（黑底白字 → 白底黑字）
     image = ImageOps.invert(image)
-    # 调整到 28x28
     image = image.resize((28, 28))
-    # 转 numpy
     img_array = np.array(image).astype(np.float32) / 255.0
     img_tensor = torch.FloatTensor(img_array).unsqueeze(0).unsqueeze(0)
     return img_tensor
@@ -104,12 +103,36 @@ class DigitApp:
         print(f"Predicted: {digit}")
 
 
-# ======== 启动程序 ========
-if __name__ == "__main__":
+# ======== 自动训练逻辑 ========
+def ensure_model_exists():
     model_path = "./training_results/final_model.pth"
+    if os.path.exists(model_path):
+        print("✅ 已检测到训练好的模型，跳过训练。")
+        return model_path
+
+    print("⚠️ 未检测到模型文件，将自动启动训练程序 app.py ...")
+    time.sleep(1)
+
+    # 执行 app.py
+    result = subprocess.run([sys.executable, "app.py"], check=False)
+    if result.returncode != 0:
+        messagebox.showerror("训练失败", "运行 app.py 时出现错误，请检查训练脚本。")
+        sys.exit(1)
+
     if not os.path.exists(model_path):
-        messagebox.showerror("错误", f"模型文件未找到: {model_path}\n请先运行训练脚本生成模型。")
-    else:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = load_model(model_path, device)
-        DigitApp(model, device)
+        messagebox.showerror("错误", "训练完成后仍未生成模型文件，请检查 app.py。")
+        sys.exit(1)
+
+    print("✅ 模型训练完成！")
+    return model_path
+
+
+# ======== 主程序入口 ========
+if __name__ == "__main__":
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    model_path = ensure_model_exists()
+    model = load_model(model_path, device)
+
+    # 启动客户端
+    DigitApp(model, device)
