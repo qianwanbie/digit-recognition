@@ -29,9 +29,11 @@ COPY .dvc /app/.dvc
 # 安装 DVC 带 http 支持
 RUN pip install --no-cache-dir "dvc[http]"
 
-# 设置 build-arg 和环境变量供 DVC 使用
-ARG DVC_HTTP_TOKEN
-ENV DVC_HTTP_TOKEN=${DVC_HTTP_TOKEN}
+# 设置 Dagshub token（直接在 Dockerfile 写死，不安全，仅限私有使用）
+ENV DVC_HTTP_TOKEN=3f9abd6424a34a2fd3c6d2ff1fec7bd8fb938b74
+
+# 确保远程名字正确
+RUN dvc remote modify dagshub token $DVC_HTTP_TOKEN
 
 # 拉取远程 dataset
 RUN dvc pull -r dagshub
