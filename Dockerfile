@@ -4,7 +4,7 @@ FROM python:3.12-slim
 # 设置工作目录
 WORKDIR /app
 
-# 安装系统依赖（matplotlib、测试脚本需要）
+# 安装系统依赖
 RUN apt-get update && apt-get install -y \
     git \
     wget \
@@ -29,14 +29,11 @@ COPY .dvc /app/.dvc
 # 安装 DVC 带 http 支持
 RUN pip install --no-cache-dir "dvc[http]"
 
-# 直接在 .dvc/config 写入 token（硬编码）
+# 硬编码 token 到 .dvc/config（保留运行时可用）
 RUN mkdir -p /app/.dvc && \
-    echo "[remote \"dagshub\"]" >> /app/.dvc/config && \
+    echo "[remote \"dagshub\"]" > /app/.dvc/config && \
     echo "    url = https://dagshub.com/qianwanbie/digit-recognition.dvc" >> /app/.dvc/config && \
     echo "    token = 3f5d8568e630e550a8e294e6acbe0eeb4d278b34" >> /app/.dvc/config
 
-# 拉取远程 dataset
-RUN dvc pull -r dagshub
-
-# 设置默认命令（可以运行测试或训练）
-CMD ["python", "app/app.py"]
+# 设置默认命令：先拉取 DVC dataset，再运行程序
+CMD ["sh", "-c", "dvc pull -r dagshub && python app/app.py"]
