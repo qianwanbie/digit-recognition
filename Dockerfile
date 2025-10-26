@@ -16,14 +16,21 @@ RUN apt-get update && apt-get install -y \
     libxext6 \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制项目文件
-COPY app /app/app
-COPY dataset /app/dataset
-COPY requirements.txt /app/requirements.txt
-
 # 安装 Python 依赖
+COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
+
+# 复制项目文件和 DVC 配置文件
+COPY app /app/app
+COPY dataset.dvc /app/dataset.dvc
+COPY .dvc /app/.dvc
+
+# 安装 DVC
+RUN pip install --no-cache-dir "dvc[http]"
+
+# 拉取远程 dataset
+RUN dvc pull -r dagshub
 
 # 设置默认命令（可以运行测试或训练）
 CMD ["python", "app/app.py"]
