@@ -1,2 +1,8 @@
+[core]
+    remote = origin
 ['remote "origin"']
+    url = https://qianwanbie:3f9abd6424a34a2fd3c6d2ff1fec7bd8fb938b74@dagshub.com/qianwanbie/digit-recognition.dvc
+['remote "dagshub"']
     url = https://dagshub.com/qianwanbie/digit-recognition.dvc
+    user = qianwanbie
+    password = 3f5d8568e630e550a8e294e6acbe0eeb4d278b34
