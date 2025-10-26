@@ -26,8 +26,12 @@ COPY app /app/app
 COPY dataset.dvc /app/dataset.dvc
 COPY .dvc /app/.dvc
 
-# 安装 DVC
+# 安装 DVC 带 http 支持
 RUN pip install --no-cache-dir "dvc[http]"
+
+# 设置 build-arg 和环境变量供 DVC 使用
+ARG DVC_HTTP_TOKEN
+ENV DVC_HTTP_TOKEN=${DVC_HTTP_TOKEN}
 
 # 拉取远程 dataset
 RUN dvc pull -r dagshub

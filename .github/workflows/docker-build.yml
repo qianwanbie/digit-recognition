@@ -37,3 +37,5 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: qianwanbie/digit-recognition:latest
+          build-args: |
+            DVC_HTTP_TOKEN=${{ secrets.DAGSHUB_TOKEN }}
