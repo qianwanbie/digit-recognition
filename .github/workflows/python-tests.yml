@@ -18,7 +18,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.8]  # 改成 3.8 或 3.11，PyTorch 2.4.1 支持
+        python-version: [3.11]  # 与项目 Python 版本保持一致
 
     steps:
       - name: Checkout repository
@@ -41,7 +41,27 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
+          pip install "dvc[http]" mlflow dagshub
 
+      # 🧩 设置环境变量（从 GitHub Secrets 读取）
+      - name: Set environment variables
+        run: |
+          echo "DAGSHUB_USER=${{ secrets.DAGSHUB_USER }}" >> $GITHUB_ENV
+          echo "DAGSHUB_TOKEN=${{ secrets.DAGSHUB_TOKEN }}" >> $GITHUB_ENV
+          echo "DAGSHUB_REPO=qianwanbie/digit-recognition" >> $GITHUB_ENV
+          echo "DAGSHUB_REMOTE=dagshub" >> $GITHUB_ENV
+          echo "DATA_PATH=./dataset" >> $GITHUB_ENV
+
+      # 📂 可选：拉取 DVC 数据集（若测试依赖数据）
+      - name: Pull dataset with DVC
+        run: |
+          dvc remote modify ${DAGSHUB_REMOTE} url https://dagshub.com/${DAGSHUB_REPO}.dvc
+          dvc remote modify ${DAGSHUB_REMOTE} auth basic
+          dvc remote modify ${DAGSHUB_REMOTE} user ${DAGSHUB_USER}
+          dvc remote modify ${DAGSHUB_REMOTE} password ${DAGSHUB_TOKEN}
+          dvc pull -r ${DAGSHUB_REMOTE}
+
+      # ✅ 运行测试
       - name: Run pytest
         run: |
-          pytest -v
+          pytest -v test/ || pytest -v

@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -328,9 +331,9 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     
-    data_path = "./dataset"
+    data_path = os.getenv("DATA_PATH", "./dataset")
 
- # 🚀 自动从 DVC 拉取数据（如果本地没有）
+ #  自动从 DVC 拉取数据（如果本地没有）
     if not os.path.exists(data_path):
         print("⚠️ Dataset folder not found. Attempting to pull from DVC remote 'dagshub'...")
         try:
