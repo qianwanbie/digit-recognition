@@ -29,11 +29,11 @@ COPY .dvc /app/.dvc
 # 安装 DVC 带 http 支持
 RUN pip install --no-cache-dir "dvc[http]"
 
-# 设置 Dagshub token（直接在 Dockerfile 写死，不安全，仅限私有使用）
-ENV DVC_HTTP_TOKEN=3f9abd6424a34a2fd3c6d2ff1fec7bd8fb938b74
-
-# 确保远程名字正确
-RUN dvc remote modify dagshub token $DVC_HTTP_TOKEN
+# 直接在 .dvc/config 写入 token（硬编码）
+RUN mkdir -p /app/.dvc && \
+    echo "[remote \"dagshub\"]" >> /app/.dvc/config && \
+    echo "    url = https://dagshub.com/qianwanbie/digit-recognition.dvc" >> /app/.dvc/config && \
+    echo "    token = 3f5d8568e630e550a8e294e6acbe0eeb4d278b34" >> /app/.dvc/config
 
 # 拉取远程 dataset
 RUN dvc pull -r dagshub
