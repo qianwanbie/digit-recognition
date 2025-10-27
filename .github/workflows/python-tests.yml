@@ -18,7 +18,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.8]  # 改成 3.8 或 3.11，PyTorch 2.4.1 支持
+        python-version: [3.11]  # 改成 3.8 或 3.11，PyTorch 2.4.1 支持
 
     steps:
       - name: Checkout repository
