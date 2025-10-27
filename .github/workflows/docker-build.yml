@@ -1,22 +1,18 @@
-name: Docker Build
+name: Build and Push Docker Image
 
 on:
   push:
-    branches:
-      - main
-      - dev
+    branches: [main, dev]
   pull_request:
-    branches:
-      - main
-      - dev
+    branches: [main, dev]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -36,4 +32,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: qianwanbie/digit-recognition:latest
+          tags: |
+            qianwanbie/digit-recognition:latest
+            qianwanbie/digit-recognition:${{ github.sha }}
+          cache-from: type=registry,ref=qianwanbie/digit-recognition:cache
+          cache-to: type=registry,ref=qianwanbie/digit-recognition:cache,mode=max
