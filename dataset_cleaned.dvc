@@ -1,0 +1,6 @@
+outs:
+- md5: b2d20568e48317a2e1384843d43240b8.dir
+  size: 1143489
+  nfiles: 2003
+  hash: md5
+  path: dataset_cleaned

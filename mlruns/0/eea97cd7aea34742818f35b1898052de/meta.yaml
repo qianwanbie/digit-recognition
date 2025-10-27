@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/llml/Desktop/devops/final-project/mlruns/0/eea97cd7aea34742818f35b1898052de/artifacts
+end_time: 1761546083220
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: eea97cd7aea34742818f35b1898052de
+run_name: run_20251027_142103
+run_uuid: eea97cd7aea34742818f35b1898052de
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761546066020
+status: 3
+tags: []
+user_id: llml
