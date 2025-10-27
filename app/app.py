@@ -1,6 +1,3 @@
-from dotenv import load_dotenv
-load_dotenv()
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -326,27 +323,33 @@ def plot_training_history(history, save_dir, epochs):
     plt.savefig(os.path.join(save_dir, 'training_history.png'), dpi=300, bbox_inches='tight')
     plt.close()
 
-# 6. 主函数
 def main():
+    import subprocess
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     
-    data_path = os.getenv("DATA_PATH", "./dataset")
+    data_path = "./dataset"
+    default_epochs = 20  # 默认训练轮数
 
- #  自动从 DVC 拉取数据（如果本地没有）
+    # 🚀 自动从 DVC 拉取数据
     if not os.path.exists(data_path):
-        print("⚠️ Dataset folder not found. Attempting to pull from DVC remote 'dagshub'...")
+        print("Dataset not found locally. Pulling from DVC...")
         try:
-            subprocess.run(["dvc", "pull", "-r", "dagshub"], check=True)
-            print("✅ Successfully pulled dataset from DagsHub via DVC.")
+            subprocess.run(["dvc", "pull", data_path], check=True)
+            print("✅ Dataset pulled successfully!")
         except subprocess.CalledProcessError as e:
-            print("❌ DVC pull failed. Please check your DagsHub token or remote configuration.")
-            print(f"Error details: {e}")
+            print("❌ Failed to pull dataset from DVC.")
             return
-    
+
+    # 让用户选择 epochs
+    epochs = default_epochs
     while True:
         try:
-            epochs = int(input("Enter number of training epochs (recommended 20-100): "))
+            user_input = input(f"Enter number of training epochs (recommended 20-100) or press Enter to use default {default_epochs}: ")
+            if not user_input.strip():
+                break  # 用默认值
+            epochs = int(user_input)
             if epochs > 0:
                 break
             else:
@@ -354,6 +357,9 @@ def main():
         except ValueError:
             print("Please enter a valid number")
     
+    print(f"Training for {epochs} epochs...")
+
+    # 加载数据集
     print("Loading dataset...")
     train_dataset = HandwrittenDigitsDataset(data_path, 'train')
     val_dataset = HandwrittenDigitsDataset(data_path, 'val')
@@ -363,10 +369,12 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False, num_workers=0)
     test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=0)
     
+    # 构建模型
     model = DigitRecognizer().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
     
+    # 打印训练信息
     print(f"\nTraining Configuration:")
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
     print(f"Training epochs: {epochs}")
@@ -376,12 +384,13 @@ def main():
     print(f"Batch size: 64")
     print(f"Learning rate: 0.001")
     
+    # 训练模型
     history, save_dir = train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs=epochs)
     plot_training_history(history, save_dir, epochs)
     
-    # 加载最佳模型（修复weights_only警告）
-    best_model_path = os.path.join(save_dir, 'final_model.pth')
-    checkpoint = torch.load(best_model_path, map_location=device, weights_only=False)
+    # 加载最终模型进行评估
+    final_model_path = os.path.join(save_dir, 'final_model.pth')
+    checkpoint = torch.load(final_model_path, map_location=device)
     model.load_state_dict(checkpoint['model_state_dict'])
     
     test_accuracy, class_report, conf_matrix = evaluate_model(model, test_loader, device, save_dir)
@@ -390,6 +399,7 @@ def main():
     print(f"Training epochs: {epochs}")
     print(f"Test accuracy: {test_accuracy:.2f}%")
     print(f"All results saved in: {save_dir}")
+
 
 if __name__ == "__main__":
     main()
