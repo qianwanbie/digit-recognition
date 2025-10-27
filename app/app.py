@@ -9,7 +9,6 @@ import os
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import time
 from datetime import datetime
-import subprocess
 
 # 设置中文字体（修复字体警告）
 plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']  # 用来正常显示中文标签
@@ -216,7 +215,6 @@ def evaluate_model(model, test_loader, device, save_dir):
     
     print(f"Test accuracy: {accuracy:.2f}%")
     print("\nClassification Report:")
-    # 打印格式化的分类报告
     print(classification_report(all_targets, all_predictions, digits=4))
     
     # 保存评估结果
@@ -241,7 +239,6 @@ def evaluate_model(model, test_loader, device, save_dir):
     tick_marks = np.arange(10)
     plt.xticks(tick_marks, range(10))
     plt.yticks(tick_marks, range(10))
-    
     thresh = conf_matrix.max() / 2.
     for i in range(conf_matrix.shape[0]):
         for j in range(conf_matrix.shape[1]):
@@ -292,14 +289,11 @@ def evaluate_model(model, test_loader, device, save_dir):
     plt.close()
 
     print(f"Evaluation results saved: {eval_path}")
-    
     return accuracy, class_report, conf_matrix
 
 # 5. 可视化训练历史
 def plot_training_history(history, save_dir, epochs):
     plt.figure(figsize=(15, 5))
-    
-    # 损失曲线
     plt.subplot(1, 2, 1)
     plt.plot(range(1, epochs+1), history['train_loss'], label='Train Loss', linewidth=2)
     plt.plot(range(1, epochs+1), history['val_loss'], label='Val Loss', linewidth=2)
@@ -308,8 +302,6 @@ def plot_training_history(history, save_dir, epochs):
     plt.ylabel('Loss')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    
-    # 准确率曲线
     plt.subplot(1, 2, 2)
     plt.plot(range(1, epochs+1), history['train_acc'], label='Train Accuracy', linewidth=2)
     plt.plot(range(1, epochs+1), history['val_acc'], label='Val Accuracy', linewidth=2)
@@ -318,38 +310,23 @@ def plot_training_history(history, save_dir, epochs):
     plt.ylabel('Accuracy (%)')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, 'training_history.png'), dpi=300, bbox_inches='tight')
     plt.close()
 
+# 6. 主函数
 def main():
-    import subprocess
-
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     
     data_path = "./dataset"
-    default_epochs = 20  # 默认训练轮数
-
-    # 🚀 自动从 DVC 拉取数据
     if not os.path.exists(data_path):
-        print("Dataset not found locally. Pulling from DVC...")
-        try:
-            subprocess.run(["dvc", "pull", data_path], check=True)
-            print("✅ Dataset pulled successfully!")
-        except subprocess.CalledProcessError as e:
-            print("❌ Failed to pull dataset from DVC.")
-            return
-
-    # 让用户选择 epochs
-    epochs = default_epochs
+        print(f"Error: Dataset path does not exist: {data_path}")
+        return
+    
     while True:
         try:
-            user_input = input(f"Enter number of training epochs (recommended 20-100) or press Enter to use default {default_epochs}: ")
-            if not user_input.strip():
-                break  # 用默认值
-            epochs = int(user_input)
+            epochs = int(input("Enter number of training epochs (recommended 20-100): "))
             if epochs > 0:
                 break
             else:
@@ -357,9 +334,6 @@ def main():
         except ValueError:
             print("Please enter a valid number")
     
-    print(f"Training for {epochs} epochs...")
-
-    # 加载数据集
     print("Loading dataset...")
     train_dataset = HandwrittenDigitsDataset(data_path, 'train')
     val_dataset = HandwrittenDigitsDataset(data_path, 'val')
@@ -369,12 +343,10 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False, num_workers=0)
     test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=0)
     
-    # 构建模型
     model = DigitRecognizer().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
     
-    # 打印训练信息
     print(f"\nTraining Configuration:")
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
     print(f"Training epochs: {epochs}")
@@ -384,13 +356,11 @@ def main():
     print(f"Batch size: 64")
     print(f"Learning rate: 0.001")
     
-    # 训练模型
     history, save_dir = train_model(model, train_loader, val_loader, criterion, optimizer, device, epochs=epochs)
     plot_training_history(history, save_dir, epochs)
     
-    # 加载最终模型进行评估
-    final_model_path = os.path.join(save_dir, 'final_model.pth')
-    checkpoint = torch.load(final_model_path, map_location=device)
+    best_model_path = os.path.join(save_dir, 'final_model.pth')
+    checkpoint = torch.load(best_model_path, map_location=device, weights_only=False)
     model.load_state_dict(checkpoint['model_state_dict'])
     
     test_accuracy, class_report, conf_matrix = evaluate_model(model, test_loader, device, save_dir)
@@ -399,7 +369,6 @@ def main():
     print(f"Training epochs: {epochs}")
     print(f"Test accuracy: {test_accuracy:.2f}%")
     print(f"All results saved in: {save_dir}")
-
 
 if __name__ == "__main__":
     main()
