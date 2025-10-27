@@ -83,3 +83,4 @@ coverage.xml
 *.py,cover
 /dataset
 /training_results
+/dataset_cleaned
