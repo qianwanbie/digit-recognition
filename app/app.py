@@ -192,32 +192,58 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device, e
     
     return history, save_dir
 
-# 4. 评估函数（新增归一化混淆矩阵与F1曲线）
+import os
+import json
+import torch
+import numpy as np
+import matplotlib.pyplot as plt
+from datetime import datetime
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import warnings
+from sklearn.exceptions import UndefinedMetricWarning
+
 def evaluate_model(model, test_loader, device, save_dir):
+    """
+    Evaluate the model on the test set, generate metrics, confusion matrices, and F1 score curve.
+
+    Args:
+        model (torch.nn.Module): Trained model
+        test_loader (DataLoader): Test data loader
+        device (str): 'cpu' or 'cuda'
+        save_dir (str): Directory to save evaluation results
+
+    Returns:
+        accuracy (float), class_report (dict), conf_matrix (np.ndarray)
+    """
     model.eval()
     all_predictions = []
     all_targets = []
-    
+
     print("\nEvaluating test set...")
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
             _, predicted = torch.max(output.data, 1)
-            
+
             all_predictions.extend(predicted.cpu().numpy().tolist())
             all_targets.extend(target.cpu().numpy().tolist())
-    
-    # 计算指标
-    accuracy = accuracy_score(all_targets, all_predictions) * 100
-    class_report = classification_report(all_targets, all_predictions, digits=4, output_dict=True)
-    conf_matrix = confusion_matrix(all_targets, all_predictions)
-    
+
+    # ==== 捕获 sklearn 警告 ====
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UndefinedMetricWarning)
+        accuracy = accuracy_score(all_targets, all_predictions) * 100
+        class_report = classification_report(
+            all_targets, all_predictions, digits=4, output_dict=True, zero_division=0
+        )
+        conf_matrix = confusion_matrix(all_targets, all_predictions)
+
     print(f"Test accuracy: {accuracy:.2f}%")
     print("\nClassification Report:")
-    print(classification_report(all_targets, all_predictions, digits=4))
-    
-    # 保存评估结果
+    print(classification_report(all_targets, all_predictions, digits=4, zero_division=0))
+
+    # ==== 保存评估结果 ====
+    os.makedirs(save_dir, exist_ok=True)
     eval_results = {
         'test_accuracy': float(accuracy),
         'classification_report': class_report,
@@ -226,19 +252,18 @@ def evaluate_model(model, test_loader, device, save_dir):
         'targets': all_targets,
         'evaluation_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
-    
     eval_path = os.path.join(save_dir, 'evaluation_results.json')
     with open(eval_path, 'w', encoding='utf-8') as f:
         json.dump(eval_results, f, ensure_ascii=False, indent=2)
-    
-    # 普通混淆矩阵
+
+    # ==== 绘制普通混淆矩阵 ====
     plt.figure(figsize=(10, 8))
     plt.imshow(conf_matrix, interpolation='nearest', cmap=plt.cm.Blues)
     plt.title('Confusion Matrix')
     plt.colorbar()
-    tick_marks = np.arange(10)
-    plt.xticks(tick_marks, range(10))
-    plt.yticks(tick_marks, range(10))
+    tick_marks = np.arange(len(conf_matrix))
+    plt.xticks(tick_marks, range(len(conf_matrix)))
+    plt.yticks(tick_marks, range(len(conf_matrix)))
     thresh = conf_matrix.max() / 2.
     for i in range(conf_matrix.shape[0]):
         for j in range(conf_matrix.shape[1]):
@@ -251,30 +276,31 @@ def evaluate_model(model, test_loader, device, save_dir):
     plt.savefig(os.path.join(save_dir, 'confusion_matrix.png'), dpi=300, bbox_inches='tight')
     plt.close()
 
-    # === 新增：绘制归一化混淆矩阵 ===
-    conf_matrix_norm = conf_matrix.astype('float') / conf_matrix.sum(axis=1)[:, np.newaxis]
+    # ==== 绘制归一化混淆矩阵（捕获除零警告） ====
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        conf_matrix_norm = conf_matrix.astype('float') / conf_matrix.sum(axis=1)[:, np.newaxis]
+
     plt.figure(figsize=(10, 8))
     plt.imshow(conf_matrix_norm, interpolation='nearest', cmap=plt.cm.Blues)
     plt.title('Normalized Confusion Matrix')
     plt.colorbar()
-    tick_marks = np.arange(len(conf_matrix))
-    plt.xticks(tick_marks, range(len(conf_matrix)))
-    plt.yticks(tick_marks, range(len(conf_matrix)))
-
+    tick_marks = np.arange(len(conf_matrix_norm))
+    plt.xticks(tick_marks, range(len(conf_matrix_norm)))
+    plt.yticks(tick_marks, range(len(conf_matrix_norm)))
     thresh = conf_matrix_norm.max() / 2.
     for i in range(conf_matrix_norm.shape[0]):
         for j in range(conf_matrix_norm.shape[1]):
             plt.text(j, i, f"{conf_matrix_norm[i, j]:.2f}",
                      ha="center",
                      color="white" if conf_matrix_norm[i, j] > thresh else "black")
-
     plt.ylabel('True Label')
     plt.xlabel('Predicted Label')
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, 'confusion_matrix_normalized.png'), dpi=300, bbox_inches='tight')
     plt.close()
 
-    # === 新增：绘制每类 F1 曲线 ===
+    # ==== 绘制每类 F1 曲线 ====
     f1_scores = [v["f1-score"] for k, v in class_report.items() if k.isdigit()]
     plt.figure(figsize=(10, 6))
     plt.plot(range(len(f1_scores)), f1_scores, marker='o', linestyle='-', linewidth=2)

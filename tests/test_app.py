@@ -1,15 +1,21 @@
-# test-app.py
 import os
 import torch
 import numpy as np
 import pytest
 import sys
 import logging
+import json
 
-# 配置 logging
+# ==== ✅ 自动开启 logging 输出到终端 ====
+@pytest.fixture(autouse=True)
+def enable_logging(caplog):
+    caplog.set_level(logging.INFO)
+
+# 配置 logging 基础格式
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  # 把 final-project 加入路径
+# ==== 项目路径导入 ====
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from app.app import HandwrittenDigitsDataset, DigitRecognizer, train_model, evaluate_model
 
 # ==== 1. 测试数据集类 ====
@@ -26,7 +32,6 @@ def test_dataset_loading(tmp_path):
     np.save(data_dir / "y_train.npy", y)
 
     # 创建伪造 labels.json
-    import json
     labels_json = [{"index": i, "label": int(y[i])} for i in range(len(y))]
     with open(data_dir / "train_labels.json", "w", encoding="utf-8") as f:
         json.dump(labels_json, f, ensure_ascii=False, indent=2)
